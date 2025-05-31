@@ -1,0 +1,56 @@
+/*
+This project is a simple yet practical example of how we can use Natural Language Processing (NLP) and Machine Learning to understand the sentiment behind a piece of text. Whether it's a tweet, a product review, or any short message, the program can automatically figure out if the sentiment is positive, negative or neutral.
+
+Everything is written in one Python file (`sentiment_analysis.py`), so it's easy to follow and run. The script handles the full process: cleaning the text, converting it into a format that a machine learning model can understand, training the model, and then testing how well it works.
+*/
+
+import pandas as pd
+import re
+import nltk
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, accuracy_score
+
+# Download NLTK stopwords
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+
+# 1. Load Dataset
+df = pd.read_csv('twitter_sentiments.csv')  # CSV should have 'text' and 'sentiment' columns
+
+# 2. Clean Text Function
+def clean_text(text):
+    text = re.sub(r"http\S+|www\S+|https\S+", '', text, flags=re.MULTILINE)
+    text = re.sub(r'\@w+|\#','', text)
+    text = re.sub(r'[^\w\s]', '', text)
+    return text.lower()
+
+# 3. Preprocess Data
+def preprocess_data(df):
+    df['clean_text'] = df['text'].apply(clean_text)
+    stop_words = set(stopwords.words('english'))
+    df['clean_text'] = df['clean_text'].apply(lambda x: ' '.join([word for word in x.split() if word not in stop_words]))
+
+    vectorizer = TfidfVectorizer(max_features=5000)
+    X = vectorizer.fit_transform(df['clean_text'])
+    y = df['sentiment']
+
+    return train_test_split(X, y, test_size=0.2, random_state=42), vectorizer
+
+# 4. Train Model
+def train_model(X_train, y_train):
+    model = LogisticRegression()
+    model.fit(X_train, y_train)
+    return model
+
+# 5. Evaluate Model
+def evaluate_model(model, X_test, y_test):
+    predictions = model.predict(X_test)
+    print("Accuracy:", accuracy_score(y_test, predictions))
+    print("Classification Report:\n", classification_report(y_test, predictions))
+
+# 6. Run Pipeline
+(X_train, X_test, y_train, y_test), vectorizer = preprocess_data(df)
+model = train_model(X_train, y_train)
+evaluate_model(model, X_test, y_test)
